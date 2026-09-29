@@ -275,9 +275,12 @@ def check_spf(resolver: Resolver, domain: str, provider: dict | None = None, no_
         result.add(
             FAIL,
             "No SPF record",
-            f"{domain} publishes no 'v=spf1' TXT record, so receivers cannot tell which servers may send "
-            "its mail and spoofed mail is easier to deliver. Publish one record that lists every service "
-            "that sends as this domain.",
+            (f"{domain} publishes no 'v=spf1' TXT record and does not seem to handle mail. If it never "
+             "sends email, 'v=spf1 -all' tells receivers to reject any message that claims to come from it."
+             if no_mail else
+             f"{domain} publishes no 'v=spf1' TXT record, so receivers cannot tell which servers may send "
+             "its mail and spoofed mail is easier to deliver. Publish one record that lists every service "
+             "that sends as this domain."),
             suggested_record(domain, provider, no_mail),
         )
         return result.settle()

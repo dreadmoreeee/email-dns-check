@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from .dkim import check_dkim
-from .dmarc import check_dmarc
+from .dmarc import check_dmarc, org_domain
 from .model import FAIL, CheckResult, DomainReport, parse_tags
 from .mtasts import check_bimi, check_mta_sts, check_tls_rpt
 from .mx import check_mx, detect_provider
@@ -26,7 +26,9 @@ def check_domain(domain: str, resolver: Resolver, selectors: list[str] | None = 
     mx = _safe("MX", check_mx, resolver, domain)
     report.checks.append(mx)
     hosts = [r["host"] for r in mx.data.get("records", []) if r["host"] != "."]
-    no_mail = bool(mx.data.get("records")) and not hosts
+    # null MX, or a subdomain with no MX at all (e.g. a website host that never sends mail)
+    no_mail = (bool(mx.data.get("records")) and not hosts) or (
+        not mx.data.get("records") and org_domain(domain) != domain)
     provider = detect_provider(hosts)
 
     report.checks.append(_safe("SPF", check_spf, resolver, domain, provider, no_mail))

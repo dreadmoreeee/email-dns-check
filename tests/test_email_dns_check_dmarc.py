@@ -90,3 +90,40 @@ def test_alignment_and_fo_details(records):
     result = check(records, "v=DMARC1; p=reject; adkim=s; aspf=r; fo=1; rua=mailto:dmarc@example.com")
     assert any("adkim=s (strict" in d for d in result.details)
     assert finding(result, "fo= has no effect").severity == "info"
+
+
+def test_subdomain_inherits_parent_policy_none_is_a_warning():
+    res = FakeResolver({"_dmarc.example.com": {"TXT": ["v=DMARC1; p=none; rua=mailto:d@example.com"]}})
+    result = check_dmarc(res, "shop.example.com")
+    assert result.status == "warn"
+    assert result.summary == "Inherited from example.com: policy none for subdomains"
+    assert finding(result, "Inherited DMARC policy is none")
+
+
+def test_subdomain_inherits_sp_reject_and_passes():
+    res = FakeResolver({"_dmarc.example.com": {"TXT": ["v=DMARC1; p=none; sp=reject"]}})
+    result = check_dmarc(res, "shop.example.com")
+    assert result.status in ("pass", "info")
+    assert "reject" in result.summary
+
+
+def test_subdomain_without_any_record_still_fails():
+    result = check_dmarc(FakeResolver({}), "shop.example.com")
+    assert result.status == "fail"
+
+
+def test_org_domain():
+    from email_dns_check.dmarc import org_domain
+    assert org_domain("marvin.demarkstudio.ca") == "demarkstudio.ca"
+    assert org_domain("a.b.example.co.uk") == "example.co.uk"
+    assert org_domain("example.com") == "example.com"
+
+
+def test_subdomain_without_mail_gets_spf_dash_all():
+    from email_dns_check.checker import check_domain
+    res = FakeResolver({"_dmarc.example.com": {"TXT": ["v=DMARC1; p=reject"]}})
+    report = check_domain("www2.example.com", res, https=False)
+    spf = next(c for c in report.checks if c.name == "SPF")
+    assert spf.findings[0].record == 'www2.example.com. TXT "v=spf1 -all"'
+    dmarc = next(c for c in report.checks if c.name == "DMARC")
+    assert "reject" in dmarc.summary

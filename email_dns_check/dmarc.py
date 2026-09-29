@@ -54,6 +54,30 @@ def check_dmarc(resolver: Resolver, domain: str) -> CheckResult:
     result.data = {"records": records}
     default_rua = f"mailto:dmarc@{domain}"
 
+    if not records and org_domain(domain) != domain:
+        # RFC 7489 6.6.3: receivers fall back to the organizational domain's record (its sp= tag)
+        org = org_domain(domain)
+        parent = [t for t in resolver.resolve(f"_dmarc.{org}", "TXT") if is_dmarc(t)]
+        if len(parent) == 1:
+            ptags = dict(parse_tags(parent[0])[0])
+            effective = (ptags.get("sp") or ptags.get("p") or "none").lower()
+            result.data = {"records": [], "inherited_from": org, "inherited_record": parent[0]}
+            result.summary = f"Inherited from {org}: policy {effective} for subdomains"
+            result.details.append(f"_dmarc.{org}: {parent[0]}")
+            if effective == "none":
+                result.add(
+                    WARN,
+                    "Inherited DMARC policy is none",
+                    f"{domain} has no record of its own, so receivers use {org}'s record, whose "
+                    f"subdomain policy is none: spoofed mail using {domain} is still delivered. "
+                    f"Set sp=quarantine or sp=reject on {org} (or publish a record here). " + STAGED_PATH,
+                )
+            else:
+                result.add(INFO, f"Inherited DMARC policy: {effective}",
+                           f"{domain} has no record of its own; receivers apply {org}'s subdomain "
+                           f"policy ({effective}). Nothing to publish here.")
+            return result.settle()
+
     if not records:
         result.summary = "No DMARC record"
         result.add(
@@ -215,3 +239,18 @@ def check_dmarc(resolver: Resolver, domain: str) -> CheckResult:
     result.summary = f"p={values.get('p', '(missing)')}" + (f", pct={pct}" if pct else "") + (
         ", aggregate reports on" if "rua" in values else ", no aggregate reports")
     return result.settle()
+
+
+# Public suffixes with two labels that matter for the demo audience; the rest use the last two labels.
+_TWO_LABEL_SUFFIXES = {"co.uk", "org.uk", "ac.uk", "gov.uk", "com.au", "net.au", "org.au", "co.nz",
+                       "com.br", "com.mx", "com.co", "co.jp", "co.za", "com.ar", "gc.ca", "qc.ca", "on.ca",
+                       "nb.ca", "ns.ca", "bc.ca", "ab.ca", "mb.ca", "sk.ca", "nl.ca", "pe.ca"}
+
+
+def org_domain(domain: str) -> str:
+    """Organizational domain (registrable domain) of ``domain``, from a short built-in suffix list."""
+    labels = domain.lower().strip(".").split(".")
+    if len(labels) <= 2:
+        return ".".join(labels)
+    n = 3 if ".".join(labels[-2:]) in _TWO_LABEL_SUFFIXES else 2
+    return ".".join(labels[-n:])

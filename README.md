@@ -129,10 +129,28 @@ include:_spf.google.com [lookup 1]
 
 ```
 $ python -m pytest -q -p no:cacheprovider --import-mode=importlib email-dns-check
-74 passed in 3.13s
+79 passed in 3.14s
 ```
 
 The tests use a fake resolver and a local HTTP server on a random port: no internet and no real DNS.
+
+
+**Subdomains.** Running it on my portfolio host showed two wrong answers in the first version: it said "No DMARC record" (a subdomain inherits the organizational domain's policy, RFC 7489 6.6.3) and suggested `v=spf1 mx ~all` for a hostname that never sends mail. Both are fixed; the same run now:
+
+```
+$ python -m email_dns_check marvin.demarkstudio.ca
+marvin.demarkstudio.ca: FAIL
+
+  MX       WARN  No MX records; mail falls back to the domain's A/AAAA address
+  SPF      FAIL  No SPF record
+  DMARC    WARN  Inherited from demarkstudio.ca: policy none for subdomains
+  DKIM     WARN  No DKIM key found at 8 probed selectors
+  MTA-STS  INFO  Not published (optional)
+  TLS-RPT  INFO  Not published (optional)
+  BIMI     INFO  Not published (optional)
+```
+
+The SPF advice for a host with no mail is now `v=spf1 -all`, and DMARC shows the inherited policy (still `none`, which is the real gap).
 
 ## Limitations
 
