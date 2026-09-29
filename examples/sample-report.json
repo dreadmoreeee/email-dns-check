@@ -1,0 +1,167 @@
+{
+  "tool": "email-dns-check",
+  "version": "1.0.0",
+  "status": "warn",
+  "domains": [
+    {
+      "domain": "example.com",
+      "status": "warn",
+      "checks": [
+        {
+          "name": "MX",
+          "status": "pass",
+          "summary": "1 MX host(s) (Google Workspace), all resolve",
+          "details": [
+            "1 smtp.google.com -> 142.250.0.27"
+          ],
+          "findings": [],
+          "data": {
+            "records": [
+              {
+                "priority": 1,
+                "host": "smtp.google.com"
+              }
+            ],
+            "provider": "Google Workspace"
+          }
+        },
+        {
+          "name": "SPF",
+          "status": "warn",
+          "summary": "1 record, 5/10 DNS lookups, 0/2 void lookups, ends with ?all",
+          "details": [
+            "record: v=spf1 include:_spf.google.com include:servers.mcsv.net ?all",
+            "expansion:",
+            "  include:_spf.google.com [lookup 1]",
+            "    include:_netblocks.google.com [lookup 2]",
+            "    include:_netblocks2.google.com [lookup 3]",
+            "    include:_netblocks3.google.com [lookup 4]",
+            "  include:servers.mcsv.net [lookup 5]"
+          ],
+          "findings": [
+            {
+              "severity": "warn",
+              "title": "SPF ends with ?all",
+              "explanation": "'?all' (neutral) says nothing about servers not listed, so SPF gives no protection. End the record with '~all' or '-all'.",
+              "record": "example.com. TXT \"v=spf1 include:_spf.google.com include:servers.mcsv.net ~all\""
+            }
+          ],
+          "data": {
+            "records": [
+              "v=spf1 include:_spf.google.com include:servers.mcsv.net ?all"
+            ],
+            "lookups": 5,
+            "void_lookups": 0
+          }
+        },
+        {
+          "name": "DMARC",
+          "status": "warn",
+          "summary": "p=none, no aggregate reports",
+          "details": [
+            "record: v=DMARC1; p=none",
+            "policy: p=none, subdomains sp=(inherits p)",
+            "DKIM alignment adkim=r (relaxed: subdomains of the same organisational domain align)",
+            "SPF alignment aspf=r (relaxed: subdomains of the same organisational domain align)"
+          ],
+          "findings": [
+            {
+              "severity": "warn",
+              "title": "DMARC policy is p=none (monitoring only)",
+              "explanation": "p=none tells receivers to take no action on mail that fails DMARC: spoofed mail is still delivered normally. It is the right first stage while you read the aggregate reports, but it does not protect the domain. Staged path: (1) p=none with rua reports while you check that every legitimate sender passes SPF or DKIM with alignment; (2) p=quarantine (optionally with pct below 100 at first) so failing mail goes to spam; (3) p=reject once reports stay clean.",
+              "record": "_dmarc.example.com. TXT \"v=DMARC1; p=quarantine\""
+            },
+            {
+              "severity": "warn",
+              "title": "No aggregate reports (rua)",
+              "explanation": "Without rua= you get no reports showing which servers send as your domain and whether they pass, so you cannot move safely to a stricter policy.",
+              "record": "_dmarc.example.com. TXT \"v=DMARC1; p=none; rua=mailto:dmarc@example.com\""
+            }
+          ],
+          "data": {
+            "records": [
+              "v=DMARC1; p=none"
+            ]
+          }
+        },
+        {
+          "name": "DKIM",
+          "status": "warn",
+          "summary": "1 key(s) found: google (1024-bit)",
+          "details": [
+            "google: RSA 1024-bit key"
+          ],
+          "findings": [
+            {
+              "severity": "warn",
+              "title": "Selector 'google': 1024-bit RSA key",
+              "explanation": "1024-bit keys are still accepted but are the minimum; 2048 bits is the current recommendation. Rotate to a 2048-bit key (keep the old selector until mail signed with it has been delivered).",
+              "record": "google._domainkey.example.com. TXT \"v=DKIM1; k=rsa; p=<new 2048-bit public key from your mail provider>\""
+            }
+          ],
+          "data": {
+            "probed": [
+              "google",
+              "selector1",
+              "selector2",
+              "k1",
+              "default",
+              "s1",
+              "s2",
+              "mail"
+            ],
+            "keys": [
+              {
+                "selector": "google",
+                "record": "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDwwIDAQAB",
+                "key_type": "rsa",
+                "bits": 1024,
+                "revoked": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "MTA-STS",
+          "status": "info",
+          "summary": "Not published (optional)",
+          "details": [],
+          "findings": [
+            {
+              "severity": "info",
+              "title": "No MTA-STS record",
+              "explanation": "MTA-STS makes senders require TLS with a valid certificate when delivering to your MX hosts, blocking downgrade attacks. To enable it, serve a policy file as text/plain at https://mta-sts.example.com/.well-known/mta-sts.txt (valid HTTPS certificate for mta-sts.example.com) with mode: testing first, then publish the TXT record. Policy file: (one line each) version: STSv1 | mode: testing | mx: smtp.google.com | max_age: 604800",
+              "record": "_mta-sts.example.com. TXT \"v=STSv1; id=2026092901\""
+            }
+          ],
+          "data": {}
+        },
+        {
+          "name": "TLS-RPT",
+          "status": "info",
+          "summary": "Not published (optional)",
+          "details": [],
+          "findings": [
+            {
+              "severity": "info",
+              "title": "No TLS-RPT record",
+              "explanation": "TLS-RPT asks senders to email you daily reports of TLS problems delivering to your domain; useful alongside MTA-STS.",
+              "record": "_smtp._tls.example.com. TXT \"v=TLSRPTv1; rua=mailto:tlsrpt@example.com\""
+            }
+          ],
+          "data": {}
+        },
+        {
+          "name": "BIMI",
+          "status": "info",
+          "summary": "Not published (optional)",
+          "details": [
+            "BIMI shows your logo in some inboxes; it needs DMARC p=quarantine or p=reject and, for Gmail, a verified mark certificate."
+          ],
+          "findings": [],
+          "data": {}
+        }
+      ]
+    }
+  ]
+}

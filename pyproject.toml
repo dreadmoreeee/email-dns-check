@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "email-dns-check"
+version = "1.0.0"
+description = "Check a domain's SPF, DKIM, DMARC, MX, MTA-STS, TLS-RPT and BIMI records and get the exact DNS record to fix each problem."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Marvin Palencia" }]
+keywords = ["email", "dns", "spf", "dkim", "dmarc", "mta-sts", "deliverability"]
+dependencies = ["dnspython>=2.3"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+    "Topic :: Communications :: Email",
+    "Topic :: Internet :: Name Service (DNS)",
+]
+
+[project.urls]
+Homepage = "https://github.com/dreadmoreeee/email-dns-check"
+
+[project.scripts]
+email-dns-check = "email_dns_check.cli:main"
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.setuptools]
+packages = ["email_dns_check"]

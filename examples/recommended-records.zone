@@ -1,0 +1,31 @@
+; Recommended email authentication records for example.com on Google Workspace.
+; Replace example.com and the report addresses with your own. Publish DMARC in
+; stages: p=none -> p=quarantine -> p=reject as the rua reports come back clean.
+
+; Mail servers
+example.com.                     MX   1 smtp.google.com.
+
+; SPF: one record, Google plus any other service that sends as you
+example.com.                     TXT  "v=spf1 include:_spf.google.com ~all"
+
+; DKIM: generate a 2048-bit key in Admin console > Apps > Gmail > Authenticate email
+google._domainkey.example.com.   TXT  "v=DKIM1; k=rsa; p=<2048-bit public key from Google Admin>"
+
+; DMARC, stage 1 (monitor); later p=quarantine, then p=reject
+_dmarc.example.com.              TXT  "v=DMARC1; p=none; rua=mailto:dmarc@example.com"
+
+; MTA-STS: also serve https://mta-sts.example.com/.well-known/mta-sts.txt containing
+;   version: STSv1
+;   mode: testing
+;   mx: smtp.google.com
+;   max_age: 604800
+; and change id= every time that file changes.
+_mta-sts.example.com.            TXT  "v=STSv1; id=2026092901"
+
+; TLS-RPT: daily reports about TLS failures delivering to you
+_smtp._tls.example.com.          TXT  "v=TLSRPTv1; rua=mailto:tlsrpt@example.com"
+
+; Domains that never send mail: lock them down instead
+; parked.example.                MX   0 .
+; parked.example.                TXT  "v=spf1 -all"
+; _dmarc.parked.example.         TXT  "v=DMARC1; p=reject"
